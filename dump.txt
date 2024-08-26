@@ -1,0 +1,998 @@
+checkpoint 1. 
+import { useState, useEffect } from 'react';
+import io from 'socket.io-client';
+
+const socket = io('http://localhost:4000');
+
+function GameBoard() {
+  const gridSize = 5;
+
+  // Initialize the board state with correct player pieces
+  const initialBoardState = [
+    ['A_P1', 'A_P2', 'A_H1', 'A_H2', 'A_P3'], // Player 1
+    [null, null, null, null, null],
+    [null, null, null, null, null],
+    [null, null, null, null, null],
+    ['B_P3', 'B_H2', 'B_H1', 'B_P2', 'B_P1'], // Player 2
+  ];
+
+  const [board, setBoard] = useState(initialBoardState);
+  const [selectedPiece, setSelectedPiece] = useState(null);
+  const [currentPlayer, setCurrentPlayer] = useState(1);
+  const [playerType, setPlayerType] = useState(null); // 'A' or 'B'
+
+  useEffect(() => {
+    socket.on('movePiece', (updatedBoard) => {
+      setBoard(updatedBoard);
+      setCurrentPlayer((prevPlayer) => (prevPlayer === 1 ? 2 : 1)); // Switch player turn
+    });
+
+    return () => {
+      socket.off('movePiece');
+    };
+  }, []);
+
+  useEffect(() => {
+    setPlayerType(currentPlayer === 1 ? 'A' : 'B');
+  }, [currentPlayer]);
+
+  const handleCellClick = (x, y) => {
+    const piece = board[x][y];
+    const isPlayerPiece =
+      currentPlayer === 1
+        ? piece && piece.startsWith('A')
+        : piece && piece.startsWith('B');
+
+    if (isPlayerPiece) {
+      setSelectedPiece({ x, y, piece });
+    }
+  };
+
+  const isValidMove = (newX, newY) => {
+    if (newX < 0 || newX >= gridSize || newY < 0 || newY >= gridSize) {
+      return false;
+    }
+
+    const targetCell = board[newX][newY];
+    const isPlayerPiece =
+      currentPlayer === 1
+        ? targetCell && targetCell.startsWith('A')
+        : targetCell && targetCell.startsWith('B');
+
+    return !isPlayerPiece;
+  };
+
+  const movePiece = (direction) => {
+    if (selectedPiece) {
+      const { x, y, piece } = selectedPiece;
+      let newX = x,
+        newY = y;
+      const moveDistance = piece.endsWith('H1') ? 2 : 1; // _H1 moves 2 places, others 1
+      let front = 'Front';
+      let back = 'Back';
+      if (playerType === 'B') {
+        front = 'Back';
+        back = 'Front';
+      }
+      switch (direction) {
+        case front:
+          newX = currentPlayer === 1 ? x + moveDistance : x + moveDistance;
+          break;
+        case back:
+          newX = currentPlayer === 1 ? x - moveDistance : x - moveDistance;
+          break;
+        case 'Left':
+          newY = y - moveDistance;
+          break;
+        case 'Right':
+          newY = y + moveDistance;
+          break;
+        default:
+          break;
+      }
+
+      if (isValidMove(newX, newY)) {
+        const updatedBoard = board.map((row, rowIndex) =>
+          row.map((cell, colIndex) => {
+            if (rowIndex === x && colIndex === y) return null;
+            if (rowIndex === newX && colIndex === newY) return piece;
+            return cell;
+          })
+        );
+
+        socket.emit('movePiece', updatedBoard);
+        setSelectedPiece(null);
+      }
+    }
+  };
+
+  const renderBoard = () => {
+    return board.map((row, rowIndex) =>
+      row.map((cell, colIndex) => (
+        <div
+          key={`${rowIndex}-${colIndex}`}
+          className={`w-16 h-16 border border-gray-400 flex items-center justify-center
+          ${
+            cell && cell.startsWith('A')
+              ? rowIndex === 0
+                ? 'border-red-500'
+                : ''
+              : ''
+          }
+          ${
+            cell && cell.startsWith('B')
+              ? rowIndex === 4
+                ? 'border-blue-500'
+                : ''
+              : ''
+          }
+          ${cell && cell.startsWith('A') ? 'border-red-500' : ''}
+          ${cell && cell.startsWith('B') ? 'border-blue-500' : ''}
+          `}
+          onClick={() => handleCellClick(rowIndex, colIndex)}
+        >
+          {cell}
+        </div>
+      ))
+    );
+  };
+
+  return (
+    <div className="flex flex-col items-center">
+      <div
+        className={`mb-4 text-xl font-bold ${
+          playerType === 'A' ? 'text-red-500' : 'text-blue-500'
+        }`}
+      >
+        {`You are Player ${playerType}`}
+      </div>
+      <div className="mb-4 text-lg font-semibold">
+        {currentPlayer === 1 ? "Player A's Turn" : "Player B's Turn"}
+      </div>
+      <div className="grid grid-cols-5 gap-1">{renderBoard()}</div>
+      {selectedPiece && (
+        <div className="mt-5 flex space-x-4">
+          <button
+            className="bg-blue-500 text-white p-2 rounded-md"
+            onClick={() => movePiece('Front')}
+          >
+            Front
+          </button>
+          <button
+            className="bg-blue-500 text-white p-2 rounded-md"
+            onClick={() => movePiece('Back')}
+          >
+            Back
+          </button>
+          <button
+            className="bg-blue-500 text-white p-2 rounded-md"
+            onClick={() => movePiece('Left')}
+          >
+            Left
+          </button>
+          <button
+            className="bg-blue-500 text-white p-2 rounded-md"
+            onClick={() => movePiece('Right')}
+          >
+            Right
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default GameBoard;
+
+
+checkpoint 2:
+import { useState, useEffect } from 'react';
+import io from 'socket.io-client';
+
+const socket = io('http://localhost:4000');
+
+function GameBoard() {
+  const gridSize = 5;
+
+  // Initialize the board state with correct player pieces
+  const initialBoardState = [
+    ['A_P1', 'A_P2', 'A_H1', 'A_H2', 'A_P3'], // Player 1
+    [null, null, null, null, null],
+    [null, null, null, null, null],
+    [null, null, null, null, null],
+    ['B_P3', 'B_H2', 'B_H1', 'B_P2', 'B_P1'], // Player 2
+  ];
+
+  const [board, setBoard] = useState(initialBoardState);
+  const [selectedPiece, setSelectedPiece] = useState(null);
+  const [currentPlayer, setCurrentPlayer] = useState(1);
+  const [playerType, setPlayerType] = useState(null); // 'A' or 'B'
+
+  useEffect(() => {
+    socket.on('movePiece', (updatedBoard) => {
+      setBoard(updatedBoard);
+      setCurrentPlayer((prevPlayer) => (prevPlayer === 1 ? 2 : 1)); // Switch player turn
+    });
+
+    return () => {
+      socket.off('movePiece');
+    };
+  }, []);
+
+  useEffect(() => {
+    setPlayerType(currentPlayer === 1 ? 'A' : 'B');
+  }, [currentPlayer]);
+
+  const handleCellClick = (x, y) => {
+    const piece = board[x][y];
+    const isPlayerPiece =
+      currentPlayer === 1
+        ? piece && piece.startsWith('A')
+        : piece && piece.startsWith('B');
+
+    if (isPlayerPiece) {
+      setSelectedPiece({ x, y, piece });
+    }
+  };
+
+  const isValidMove = (newX, newY) => {
+    if (newX < 0 || newX >= gridSize || newY < 0 || newY >= gridSize) {
+      return false;
+    }
+
+    const targetCell = board[newX][newY];
+    const isPlayerPiece =
+      currentPlayer === 1
+        ? targetCell && targetCell.startsWith('A')
+        : targetCell && targetCell.startsWith('B');
+
+    return !isPlayerPiece;
+  };
+
+  const movePiece = (direction) => {
+    if (selectedPiece) {
+      const { x, y, piece } = selectedPiece;
+      let newX = x,
+        newY = y;
+      const moveDistance = piece.endsWith('H1') ? 2 : 1; // _H1 moves 2 places, others 1
+
+      if (piece.endsWith('H2')) {
+        // Handle hero2 (_H2) diagonal movements with 2 squares
+        switch (direction) {
+          case 'Back Left':
+            newX = currentPlayer === 1 ? x - 2 : x + 2;
+            newY = y - 2;
+            break;
+          case 'Back Right':
+            newX = currentPlayer === 1 ? x - 2 : x + 2;
+            newY = y + 2;
+            break;
+          case 'Front Left':
+            newX = currentPlayer === 1 ? x + 2 : x - 2;
+            newY = y - 2;
+            break;
+          case 'Front Right':
+            newX = currentPlayer === 1 ? x + 2 : x - 2;
+            newY = y + 2;
+            break;
+          default:
+            break;
+        }
+      } else {
+        // Handle other pieces' movements
+        let front = 'Front';
+        let back = 'Back';
+        if (playerType === 'B') {
+          front = 'Back';
+          back = 'Front';
+        }
+        switch (direction) {
+          case front:
+            newX = currentPlayer === 1 ? x + moveDistance : x + moveDistance;
+            break;
+          case back:
+            newX = currentPlayer === 1 ? x - moveDistance : x - moveDistance;
+            break;
+          case 'Left':
+            newY = y - moveDistance;
+            break;
+          case 'Right':
+            newY = y + moveDistance;
+            break;
+          default:
+            break;
+        }
+      }
+
+      if (isValidMove(newX, newY)) {
+        const updatedBoard = board.map((row, rowIndex) =>
+          row.map((cell, colIndex) => {
+            if (rowIndex === x && colIndex === y) return null;
+            if (rowIndex === newX && colIndex === newY) return piece;
+            return cell;
+          })
+        );
+
+        socket.emit('movePiece', updatedBoard);
+        setSelectedPiece(null);
+      }
+    }
+  };
+
+  const renderBoard = () => {
+    return board.map((row, rowIndex) =>
+      row.map((cell, colIndex) => (
+        <div
+          key={`${rowIndex}-${colIndex}`}
+          className={`w-16 h-16 border border-gray-400 flex items-center justify-center
+          ${
+            cell && cell.startsWith('A')
+              ? rowIndex === 0
+                ? 'border-red-500'
+                : ''
+              : ''
+          }
+          ${
+            cell && cell.startsWith('B')
+              ? rowIndex === 4
+                ? 'border-blue-500'
+                : ''
+              : ''
+          }
+          ${cell && cell.startsWith('A') ? 'border-red-500' : ''}
+          ${cell && cell.startsWith('B') ? 'border-blue-500' : ''}
+          `}
+          onClick={() => handleCellClick(rowIndex, colIndex)}
+        >
+          {cell}
+        </div>
+      ))
+    );
+  };
+
+  return (
+    <div className="flex flex-col items-center">
+      <div
+        className={`mb-4 text-xl font-bold ${
+          playerType === 'A' ? 'text-red-500' : 'text-blue-500'
+        }`}
+      >
+        {`You are Player ${playerType}`}
+      </div>
+      <div className="mb-4 text-lg font-semibold">
+        {currentPlayer === 1 ? "Player A's Turn" : "Player B's Turn"}
+      </div>
+      <div className="grid grid-cols-5 gap-1">{renderBoard()}</div>
+      {selectedPiece && (
+        <div className="mt-5 flex space-x-4">
+          {selectedPiece.piece.endsWith('H2') ? (
+            <>
+              <button
+                className="bg-blue-500 text-white p-2 rounded-md"
+                onClick={() => movePiece('Front Left')}
+              >
+                Front Left
+              </button>
+              <button
+                className="bg-blue-500 text-white p-2 rounded-md"
+                onClick={() => movePiece('Front Right')}
+              >
+                Front Right
+              </button>
+              <button
+                className="bg-blue-500 text-white p-2 rounded-md"
+                onClick={() => movePiece('Back Left')}
+              >
+                Back Left
+              </button>
+              <button
+                className="bg-blue-500 text-white p-2 rounded-md"
+                onClick={() => movePiece('Back Right')}
+              >
+                Back Right
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className="bg-blue-500 text-white p-2 rounded-md"
+                onClick={() => movePiece('Front')}
+              >
+                Front
+              </button>
+              <button
+                className="bg-blue-500 text-white p-2 rounded-md"
+                onClick={() => movePiece('Back')}
+              >
+                Back
+              </button>
+              <button
+                className="bg-blue-500 text-white p-2 rounded-md"
+                onClick={() => movePiece('Left')}
+              >
+                Left
+              </button>
+              <button
+                className="bg-blue-500 text-white p-2 rounded-md"
+                onClick={() => movePiece('Right')}
+              >
+                Right
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default GameBoard;
+
+
+checkpoint 3
+
+import { useState, useEffect } from 'react';
+import io from 'socket.io-client';
+
+const socket = io('http://localhost:4000');
+
+function GameBoard() {
+  const gridSize = 5;
+
+  const initialBoardState = [
+    ['A_P1', 'A_P2', 'A_H1', 'A_H2', 'A_P3'], // Player 1
+    [null, null, null, null, null],
+    [null, null, null, null, null],
+    [null, null, null, null, null],
+    ['B_P3', 'B_H2', 'B_H1', 'B_P2', 'B_P1'], // Player 2
+  ];
+
+  const [board, setBoard] = useState(initialBoardState);
+  const [selectedPiece, setSelectedPiece] = useState(null);
+  const [currentPlayer, setCurrentPlayer] = useState(1);
+  const [playerType, setPlayerType] = useState(null);
+  const [moveHistory, setMoveHistory] = useState([]);
+  const [gameOver, setGameOver] = useState(false);
+  const [winner, setWinner] = useState(null);
+
+  useEffect(() => {
+    socket.on('movePiece', ({ updatedBoard, move }) => {
+      setBoard(updatedBoard);
+      setMoveHistory((prevHistory) => [...prevHistory, move]);
+      setCurrentPlayer((prevPlayer) => (prevPlayer === 1 ? 2 : 1));
+    });
+
+    return () => {
+      socket.off('movePiece');
+    };
+  }, []);
+
+  useEffect(() => {
+    setPlayerType(currentPlayer === 1 ? 'A' : 'B');
+  }, [currentPlayer]);
+
+  useEffect(() => {
+    const checkWinCondition = () => {
+      const pieces = board.flat();
+      const playerAHasPieces = pieces.every(
+        (piece) => !piece || piece.startsWith('A')
+      );
+      const playerBHasPieces = pieces.every(
+        (piece) => !piece || piece.startsWith('B')
+      );
+
+      if (playerAHasPieces) {
+        setGameOver(true);
+        setWinner('A');
+      } else if (playerBHasPieces) {
+        setGameOver(true);
+        setWinner('B');
+      }
+    };
+
+    checkWinCondition();
+  }, [board]);
+
+  const handleCellClick = (x, y) => {
+    if (gameOver) return;
+
+    const piece = board[x][y];
+    const isPlayerPiece =
+      currentPlayer === 1
+        ? piece && piece.startsWith('A')
+        : piece && piece.startsWith('B');
+
+    if (isPlayerPiece) {
+      setSelectedPiece({ x, y, piece });
+    }
+  };
+
+  const isValidMove = (newX, newY) => {
+    if (newX < 0 || newX >= gridSize || newY < 0 || newY >= gridSize) {
+      return false;
+    }
+
+    const targetCell = board[newX][newY];
+    const isPlayerPiece =
+      currentPlayer === 1
+        ? targetCell && targetCell.startsWith('A')
+        : targetCell && targetCell.startsWith('B');
+
+    return !isPlayerPiece;
+  };
+
+  const movePiece = (direction) => {
+    if (selectedPiece) {
+      const { x, y, piece } = selectedPiece;
+      let newX = x,
+        newY = y;
+      const moveDistance = piece.endsWith('H1') ? 2 : 1;
+
+      if (piece.endsWith('H2')) {
+        switch (direction) {
+          case 'Back Left':
+            newX = currentPlayer === 1 ? x - 2 : x + 2;
+            newY = y - 2;
+            break;
+          case 'Back Right':
+            newX = currentPlayer === 1 ? x - 2 : x + 2;
+            newY = y + 2;
+            break;
+          case 'Front Left':
+            newX = currentPlayer === 1 ? x + 2 : x - 2;
+            newY = y - 2;
+            break;
+          case 'Front Right':
+            newX = currentPlayer === 1 ? x + 2 : x - 2;
+            newY = y + 2;
+            break;
+          default:
+            break;
+        }
+      } else {
+        let front = 'Front';
+        let back = 'Back';
+        if (playerType === 'B') {
+          front = 'Back';
+          back = 'Front';
+        }
+        switch (direction) {
+          case front:
+            newX = currentPlayer === 1 ? x + moveDistance : x + moveDistance;
+            break;
+          case back:
+            newX = currentPlayer === 1 ? x - moveDistance : x - moveDistance;
+            break;
+          case 'Left':
+            newY = y - moveDistance;
+            break;
+          case 'Right':
+            newY = y + moveDistance;
+            break;
+          default:
+            break;
+        }
+      }
+
+      if (isValidMove(newX, newY)) {
+        const updatedBoard = board.map((row, rowIndex) =>
+          row.map((cell, colIndex) => {
+            if (rowIndex === x && colIndex === y) return null;
+            if (rowIndex === newX && colIndex === newY) return piece;
+            return cell;
+          })
+        );
+
+        const moveDescription = `${piece} moved ${direction}`;
+        const moveData = { updatedBoard, move: moveDescription };
+        socket.emit('movePiece', moveData);
+        setSelectedPiece(null);
+      }
+    }
+  };
+
+  const resetGame = () => {
+    setBoard(initialBoardState);
+    setSelectedPiece(null);
+    setCurrentPlayer(1);
+    setMoveHistory([]);
+    setGameOver(false);
+    setWinner(null);
+  };
+
+  const renderBoard = () => {
+    return board.map((row, rowIndex) =>
+      row.map((cell, colIndex) => (
+        <div
+          key={`${rowIndex}-${colIndex}`}
+          className={`w-16 h-16 border border-gray-400 flex items-center justify-center
+          ${cell && cell.startsWith('A') ? 'border-red-500' : ''}
+          ${cell && cell.startsWith('B') ? 'border-blue-500' : ''}
+          `}
+          onClick={() => handleCellClick(rowIndex, colIndex)}
+        >
+          {cell}
+        </div>
+      ))
+    );
+  };
+
+  return (
+    <div className="flex flex-col items-center">
+      {gameOver ? (
+        <div className="mb-4 text-xl font-bold">{`Player ${winner} Wins!`}</div>
+      ) : (
+        <div className="mb-4 text-lg font-semibold">
+          {currentPlayer === 1 ? "Player A's Turn" : "Player B's Turn"}
+        </div>
+      )}
+      <div className="grid grid-cols-5 gap-1">{renderBoard()}</div>
+      {selectedPiece && !gameOver && (
+        <div className="mt-5 flex space-x-4">
+          {selectedPiece.piece.endsWith('H2') ? (
+            <>
+              <button
+                className="bg-blue-500 text-white p-2 rounded-md"
+                onClick={() => movePiece('Front Left')}
+              >
+                Front Left
+              </button>
+              <button
+                className="bg-blue-500 text-white p-2 rounded-md"
+                onClick={() => movePiece('Front Right')}
+              >
+                Front Right
+              </button>
+              <button
+                className="bg-blue-500 text-white p-2 rounded-md"
+                onClick={() => movePiece('Back Left')}
+              >
+                Back Left
+              </button>
+              <button
+                className="bg-blue-500 text-white p-2 rounded-md"
+                onClick={() => movePiece('Back Right')}
+              >
+                Back Right
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className="bg-blue-500 text-white p-2 rounded-md"
+                onClick={() => movePiece('Front')}
+              >
+                Front
+              </button>
+              <button
+                className="bg-blue-500 text-white p-2 rounded-md"
+                onClick={() => movePiece('Back')}
+              >
+                Back
+              </button>
+              <button
+                className="bg-blue-500 text-white p-2 rounded-md"
+                onClick={() => movePiece('Left')}
+              >
+                Left
+              </button>
+              <button
+                className="bg-blue-500 text-white p-2 rounded-md"
+                onClick={() => movePiece('Right')}
+              >
+                Right
+              </button>
+            </>
+          )}
+        </div>
+      )}
+      {gameOver && (
+        <button
+          className="mt-5 bg-green-500 text-white p-2 rounded-md"
+          onClick={resetGame}
+        >
+          Reset Game
+        </button>
+      )}
+      <div className="mt-5">
+        <h2 className="text-lg font-semibold">Move History</h2>
+        <ul className="list-disc pl-5">
+          {moveHistory.map((move, index) => (
+            <li key={index}>{move}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+export default GameBoard;
+
+
+checkpoint 4
+import { useState, useEffect } from 'react';
+import io from 'socket.io-client';
+
+const socket = io('http://localhost:4000');
+
+function GameBoard() {
+  const gridSize = 5;
+
+  const initialBoardState = [
+    ['A_P1', 'A_P2', 'A_H1', 'A_H2', 'A_P3'], // Player 1
+    [null, null, null, null, null],
+    [null, null, null, null, null],
+    [null, null, null, null, null],
+    ['B_P3', 'B_H2', 'B_H1', 'B_P2', 'B_P1'], // Player 2
+  ];
+
+  const [board, setBoard] = useState(initialBoardState);
+  const [selectedPiece, setSelectedPiece] = useState(null);
+  const [currentPlayer, setCurrentPlayer] = useState(1);
+  const [playerType, setPlayerType] = useState(null);
+  const [moveHistory, setMoveHistory] = useState([]);
+  const [gameOver, setGameOver] = useState(false);
+  const [winner, setWinner] = useState(null);
+
+  useEffect(() => {
+    socket.on('movePiece', ({ updatedBoard, move }) => {
+      setBoard(updatedBoard);
+      setMoveHistory((prevHistory) => [...prevHistory, move]);
+      setCurrentPlayer((prevPlayer) => (prevPlayer === 1 ? 2 : 1));
+    });
+
+    return () => {
+      socket.off('movePiece');
+    };
+  }, []);
+
+  useEffect(() => {
+    setPlayerType(currentPlayer === 1 ? 'A' : 'B');
+  }, [currentPlayer]);
+
+  useEffect(() => {
+    const checkWinCondition = () => {
+      const pieces = board.flat();
+      const playerAHasPieces = pieces.every(
+        (piece) => !piece || piece.startsWith('A')
+      );
+      const playerBHasPieces = pieces.every(
+        (piece) => !piece || piece.startsWith('B')
+      );
+
+      if (playerAHasPieces) {
+        setGameOver(true);
+        setWinner('A');
+      } else if (playerBHasPieces) {
+        setGameOver(true);
+        setWinner('B');
+      }
+    };
+
+    checkWinCondition();
+  }, [board]);
+
+  const handleCellClick = (x, y) => {
+    if (gameOver) return;
+
+    const piece = board[x][y];
+    const isPlayerPiece =
+      currentPlayer === 1
+        ? piece && piece.startsWith('A')
+        : piece && piece.startsWith('B');
+
+    if (isPlayerPiece) {
+      setSelectedPiece({ x, y, piece });
+    }
+  };
+
+  const isValidMove = (newX, newY) => {
+    if (newX < 0 || newX >= gridSize || newY < 0 || newY >= gridSize) {
+      return false;
+    }
+
+    const targetCell = board[newX][newY];
+    const isPlayerPiece =
+      currentPlayer === 1
+        ? targetCell && targetCell.startsWith('A')
+        : targetCell && targetCell.startsWith('B');
+
+    return !isPlayerPiece;
+  };
+
+  const movePiece = (direction) => {
+    if (selectedPiece) {
+      const { x, y, piece } = selectedPiece;
+      let newX = x,
+        newY = y;
+      const moveDistance = piece.endsWith('H1') ? 2 : 1;
+      let capturedPiece = null;
+
+      if (piece.endsWith('H2')) {
+        switch (direction) {
+          case 'Back Left':
+            newX = currentPlayer === 1 ? x - 2 : x + 2;
+            newY = y - 2;
+            break;
+          case 'Back Right':
+            newX = currentPlayer === 1 ? x - 2 : x + 2;
+            newY = y + 2;
+            break;
+          case 'Front Left':
+            newX = currentPlayer === 1 ? x + 2 : x - 2;
+            newY = y - 2;
+            break;
+          case 'Front Right':
+            newX = currentPlayer === 1 ? x + 2 : x - 2;
+            newY = y + 2;
+            break;
+          default:
+            break;
+        }
+      } else {
+        let front = 'Front';
+        let back = 'Back';
+        if (playerType === 'B') {
+          front = 'Back';
+          back = 'Front';
+        }
+        switch (direction) {
+          case front:
+            newX = currentPlayer === 1 ? x + moveDistance : x + moveDistance;
+            break;
+          case back:
+            newX = currentPlayer === 1 ? x - moveDistance : x - moveDistance;
+            break;
+          case 'Left':
+            newY = y - moveDistance;
+            break;
+          case 'Right':
+            newY = y + moveDistance;
+            break;
+          default:
+            break;
+        }
+      }
+
+      if (isValidMove(newX, newY)) {
+        const updatedBoard = board.map((row, rowIndex) =>
+          row.map((cell, colIndex) => {
+            if (rowIndex === x && colIndex === y) return null;
+            if (rowIndex === newX && colIndex === newY) {
+              capturedPiece = board[newX][newY];
+              return piece;
+            }
+            return cell;
+          })
+        );
+
+        let moveDescription = `${piece} moved ${direction}`;
+        if (capturedPiece) {
+          moveDescription += ` and captured ${capturedPiece}`;
+        }
+        const moveData = { updatedBoard, move: moveDescription };
+        socket.emit('movePiece', moveData);
+        setSelectedPiece(null);
+      }
+    }
+  };
+
+  const resetGame = () => {
+    setBoard(initialBoardState);
+    setSelectedPiece(null);
+    setCurrentPlayer(1);
+    setMoveHistory([]);
+    setGameOver(false);
+    setWinner(null);
+  };
+
+  const renderBoard = () => {
+    return board.map((row, rowIndex) =>
+      row.map((cell, colIndex) => (
+        <div
+          key={`${rowIndex}-${colIndex}`}
+          className={`w-16 h-16 border border-gray-400 flex items-center justify-center
+          ${cell && cell.startsWith('A') ? 'border-red-500' : ''}
+          ${cell && cell.startsWith('B') ? 'border-blue-500' : ''}
+          `}
+          onClick={() => handleCellClick(rowIndex, colIndex)}
+        >
+          {cell}
+        </div>
+      ))
+    );
+  };
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className="mb-4 text-lg font-semibold">
+        {gameOver
+          ? `Player ${winner} Wins!`
+          : `Player ${currentPlayer === 1 ? 'A' : 'B'}'s Turn`}
+      </div>
+      <div className="flex flex-col items-center">
+        <div className="grid grid-cols-5 gap-1">{renderBoard()}</div>
+        {selectedPiece && !gameOver && (
+          <div className="mt-5 flex space-x-4">
+            {selectedPiece.piece.endsWith('H2') ? (
+              <>
+                <button
+                  className="bg-blue-500 text-white p-2 rounded-md"
+                  onClick={() => movePiece('Front Left')}
+                >
+                  Front Left
+                </button>
+                <button
+                  className="bg-blue-500 text-white p-2 rounded-md"
+                  onClick={() => movePiece('Front Right')}
+                >
+                  Front Right
+                </button>
+                <button
+                  className="bg-blue-500 text-white p-2 rounded-md"
+                  onClick={() => movePiece('Back Left')}
+                >
+                  Back Left
+                </button>
+                <button
+                  className="bg-blue-500 text-white p-2 rounded-md"
+                  onClick={() => movePiece('Back Right')}
+                >
+                  Back Right
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="bg-blue-500 text-white p-2 rounded-md"
+                  onClick={() => movePiece('Front')}
+                >
+                  Front
+                </button>
+                <button
+                  className="bg-blue-500 text-white p-2 rounded-md"
+                  onClick={() => movePiece('Back')}
+                >
+                  Back
+                </button>
+                <button
+                  className="bg-blue-500 text-white p-2 rounded-md"
+                  onClick={() => movePiece('Left')}
+                >
+                  Left
+                </button>
+                <button
+                  className="bg-blue-500 text-white p-2 rounded-md"
+                  onClick={() => movePiece('Right')}
+                >
+                  Right
+                </button>
+              </>
+            )}
+          </div>
+        )}
+        {gameOver && (
+          <button
+            className="mt-5 bg-green-500 text-white p-2 rounded-md"
+            onClick={resetGame}
+          >
+            Reset Game
+          </button>
+        )}
+      </div>
+      <div className="mt-5 flex flex-col items-center">
+        <h2 className="text-lg font-semibold mb-2">Move History</h2>
+        <ul className="list-disc list-inside">
+          {moveHistory.map((move, index) => (
+            <li key={index} className="text-sm">
+              {move}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+export default GameBoard;
+
