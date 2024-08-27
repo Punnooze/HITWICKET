@@ -1,0 +1,50 @@
+**Punnoose Punnen**
+**21BCE1175**
+
+
+# Multiplayer Board Game
+
+This is a real-time multiplayer board game built using ReactJS for the client-side and Node.js with Socket.io for the server-side. The game involves a 5x5 grid where players can move pieces according to specific rules, with real-time updates between players.
+
+A bonus task has also been implemented to add a new Hero3 piece which offers a new type of movement.
+
+## Setup Instructions
+```bash
+# Clone the Repository
+git clone https://github.com/Punnooze/HITWICKET.git
+
+# move into the server folder
+cd server 
+
+# run the server
+node server.js
+
+# open a new terminal and move into the client folder
+cd client
+
+# run the client
+npm run dev
+```
+
+## Features
+- Real-time multiplayer gameplay with Socket.io
+- Piece selection and movement validation
+- Turn management and win condition checks
+- Special piece handling and move history tracking
+- Winning screen
+- Game reset functionality
+
+## Project Structure
+- **Client**: The frontend of the game, built with ReactJS.
+- **Server**: The backend, powered by Node.js and Socket.io for real-time communication.
+
+## Prerequisites
+- Node.js (v14 or above)
+- npm (v6 or above)
+
+
+# Playing the Game
+- open the frontend on two separate browser windows and play the game. 
+
+
+
