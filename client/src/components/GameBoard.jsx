@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import io from 'socket.io-client';
+import ChatArea from './ChatArea';
 
 const socket = io('http://localhost:4000');
 
@@ -21,6 +22,7 @@ function GameBoard() {
   const [moveHistory, setMoveHistory] = useState([]);
   const [gameOver, setGameOver] = useState(false);
   const [winner, setWinner] = useState(null);
+  const [gameStarted, setGameStarted] = useState(false);
 
   useEffect(() => {
     socket.on('movePiece', ({ updatedBoard, move }) => {
@@ -256,6 +258,12 @@ function GameBoard() {
     );
   };
 
+  useEffect(() => {
+    if (moveHistory.length > 0) {
+      setGameStarted(true);
+    }
+  }, [moveHistory]);
+
   return (
     <div className="flex justify-around items-center">
       <div>
@@ -268,7 +276,9 @@ function GameBoard() {
       </div>
       <div>
         <button
-          className="mb-4 bg-yellow-500 text-white p-2 rounded-md"
+          className={`mb-4 text-white p-2 rounded-md bg-yellow-500 ${
+            gameStarted ? 'hidden' : 'block'
+          }`}
           onClick={addHero3}
         >
           Add Hero3
@@ -399,6 +409,7 @@ function GameBoard() {
           Reset Game
         </button>
       </div>
+      <ChatArea />
     </div>
   );
 }
