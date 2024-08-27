@@ -93,10 +93,10 @@ function GameBoard() {
       const { x, y, piece } = selectedPiece;
       let newX = x,
         newY = y;
-      const moveDistance = piece.endsWith('H1') ? 2 : 1;
       let capturedPiece = null;
 
       if (piece.endsWith('H2')) {
+        // Existing logic for H2 pieces
         switch (direction) {
           case 'Back Left':
             newX = currentPlayer === 1 ? x - 2 : x + 2;
@@ -117,25 +117,78 @@ function GameBoard() {
           default:
             break;
         }
-      } else {
-        let front = 'Front';
-        let back = 'Back';
-        if (playerType === 'B') {
-          front = 'Back';
-          back = 'Front';
-        }
+      } else if (piece.endsWith('H3')) {
+        // Existing logic for H3 pieces
         switch (direction) {
-          case front:
-            newX = currentPlayer === 1 ? x + moveDistance : x + moveDistance;
+          case 'FL':
+            newX = currentPlayer === 1 ? x + 2 : x - 2;
+            newY = y - 1;
             break;
-          case back:
-            newX = currentPlayer === 1 ? x - moveDistance : x - moveDistance;
+          case 'FR':
+            newX = currentPlayer === 1 ? x + 2 : x - 2;
+            newY = y + 1;
+            break;
+          case 'BL':
+            newX = currentPlayer === 1 ? x - 2 : x + 2;
+            newY = y - 1;
+            break;
+          case 'BR':
+            newX = currentPlayer === 1 ? x - 2 : x + 2;
+            newY = y + 1;
+            break;
+          case 'RF':
+            newX = currentPlayer === 1 ? x + 1 : x - 1;
+            newY = y + 2;
+            break;
+          case 'RB':
+            newX = currentPlayer === 1 ? x - 1 : x + 1;
+            newY = y + 2;
+            break;
+          case 'LF':
+            newX = currentPlayer === 1 ? x + 1 : x - 1;
+            newY = y - 2;
+            break;
+          case 'LB':
+            newX = currentPlayer === 1 ? x - 1 : x + 1;
+            newY = y - 2;
+            break;
+          default:
+            break;
+        }
+      } else if (piece.endsWith('H1')) {
+        // New logic for H1 pieces (moving two squares)
+        switch (direction) {
+          case 'Front':
+            newX = currentPlayer === 1 ? x + 2 : x - 2;
+            break;
+          case 'Back':
+            newX = currentPlayer === 1 ? x - 2 : x + 2;
             break;
           case 'Left':
-            newY = y - moveDistance;
+            newY = y - 2;
             break;
           case 'Right':
-            newY = y + moveDistance;
+            newY = y + 2;
+            break;
+          default:
+            break;
+        }
+      } else {
+        // Existing logic for other pieces
+        let front = 'Front';
+        let back = 'Back';
+        switch (direction) {
+          case front:
+            newX = currentPlayer === 1 ? x + 1 : x - 1;
+            break;
+          case back:
+            newX = currentPlayer === 1 ? x - 1 : x + 1;
+            break;
+          case 'Left':
+            newY = y - 1;
+            break;
+          case 'Right':
+            newY = y + 1;
             break;
           default:
             break;
@@ -174,6 +227,18 @@ function GameBoard() {
     setWinner(null);
   };
 
+  const addHero3 = () => {
+    const updatedBoard = board.map((row, rowIndex) =>
+      row.map((cell) => {
+        if (cell === 'A_P3') return 'A_H3';
+        if (cell === 'B_P3') return 'B_H3';
+        return cell;
+      })
+    );
+    setBoard(updatedBoard);
+    socket.emit('movePiece', { updatedBoard, move: 'Hero3 pieces added' });
+  };
+
   const renderBoard = () => {
     return board.map((row, rowIndex) =>
       row.map((cell, colIndex) => (
@@ -192,95 +257,150 @@ function GameBoard() {
   };
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="mb-4 text-lg font-semibold">
-        {gameOver
-          ? `Player ${winner} Wins!`
-          : `Player ${currentPlayer === 1 ? 'A' : 'B'}'s Turn`}
-      </div>
-      <div className="flex flex-col items-center">
-        <div className="grid grid-cols-5 gap-1">{renderBoard()}</div>
-        {selectedPiece && !gameOver && (
-          <div className="mt-5 flex space-x-4">
-            {selectedPiece.piece.endsWith('H2') ? (
-              <>
-                <button
-                  className="bg-blue-500 text-white p-2 rounded-md"
-                  onClick={() => movePiece('Front Left')}
-                >
-                  Front Left
-                </button>
-                <button
-                  className="bg-blue-500 text-white p-2 rounded-md"
-                  onClick={() => movePiece('Front Right')}
-                >
-                  Front Right
-                </button>
-                <button
-                  className="bg-blue-500 text-white p-2 rounded-md"
-                  onClick={() => movePiece('Back Left')}
-                >
-                  Back Left
-                </button>
-                <button
-                  className="bg-blue-500 text-white p-2 rounded-md"
-                  onClick={() => movePiece('Back Right')}
-                >
-                  Back Right
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  className="bg-blue-500 text-white p-2 rounded-md"
-                  onClick={() => movePiece('Front')}
-                >
-                  Front
-                </button>
-                <button
-                  className="bg-blue-500 text-white p-2 rounded-md"
-                  onClick={() => movePiece('Back')}
-                >
-                  Back
-                </button>
-                <button
-                  className="bg-blue-500 text-white p-2 rounded-md"
-                  onClick={() => movePiece('Left')}
-                >
-                  Left
-                </button>
-                <button
-                  className="bg-blue-500 text-white p-2 rounded-md"
-                  onClick={() => movePiece('Right')}
-                >
-                  Right
-                </button>
-              </>
-            )}
-          </div>
-        )}
-        {gameOver && (
-          <button
-            className="mt-5 bg-green-500 text-white p-2 rounded-md"
-            onClick={resetGame}
-          >
-            Reset Game
-          </button>
-        )}
-      </div>
-      <div className="mt-5 flex flex-col items-center">
-        <h2 className="text-lg font-semibold mb-2">Move History</h2>
-        <ul className="list-disc list-inside">
+    <div className="flex justify-around items-center">
+      <div>
+        <div className="mt-4 text-lg font-semibold">Move History:</div>
+        <div className="w-64 text-sm h-32 overflow-y-scroll border border-gray-400 bg-white p-2">
           {moveHistory.map((move, index) => (
-            <li key={index} className="text-sm">
-              {move}
-            </li>
+            <div key={index}>{move}</div>
           ))}
-        </ul>
+        </div>
+      </div>
+      <div>
+        <button
+          className="mb-4 bg-yellow-500 text-white p-2 rounded-md"
+          onClick={addHero3}
+        >
+          Add Hero3
+        </button>
+        <div className="mb-4 text-lg font-semibold">
+          {gameOver
+            ? `Player ${winner} Wins!`
+            : `Player ${currentPlayer === 1 ? 'A' : 'B'}'s Turn`}
+        </div>
+        <div className="flex flex-col items-center">
+          <div className="grid grid-cols-5 gap-1">{renderBoard()}</div>
+          {selectedPiece && !gameOver && (
+            <div className="mt-5 flex space-x-4">
+              {selectedPiece.piece.endsWith('H2') ? (
+                <>
+                  <button
+                    onClick={() => movePiece('Back Left')}
+                    className="bg-green-500 text-white px-4 py-2 rounded"
+                  >
+                    Back Left
+                  </button>
+                  <button
+                    onClick={() => movePiece('Back Right')}
+                    className="bg-green-500 text-white px-4 py-2 rounded"
+                  >
+                    Back Right
+                  </button>
+                  <button
+                    onClick={() => movePiece('Front Left')}
+                    className="bg-green-500 text-white px-4 py-2 rounded"
+                  >
+                    Front Left
+                  </button>
+                  <button
+                    onClick={() => movePiece('Front Right')}
+                    className="bg-green-500 text-white px-4 py-2 rounded"
+                  >
+                    Front Right
+                  </button>
+                </>
+              ) : selectedPiece.piece.endsWith('H3') ? (
+                <>
+                  <button
+                    onClick={() => movePiece('FL')}
+                    className="bg-green-500 text-white px-4 py-2 rounded"
+                  >
+                    Front Left
+                  </button>
+                  <button
+                    onClick={() => movePiece('FR')}
+                    className="bg-green-500 text-white px-4 py-2 rounded"
+                  >
+                    Front Right
+                  </button>
+                  <button
+                    onClick={() => movePiece('BL')}
+                    className="bg-green-500 text-white px-4 py-2 rounded"
+                  >
+                    Back Left
+                  </button>
+                  <button
+                    onClick={() => movePiece('BR')}
+                    className="bg-green-500 text-white px-4 py-2 rounded"
+                  >
+                    Back Right
+                  </button>
+                  <button
+                    onClick={() => movePiece('RF')}
+                    className="bg-green-500 text-white px-4 py-2 rounded"
+                  >
+                    Right Front
+                  </button>
+                  <button
+                    onClick={() => movePiece('RB')}
+                    className="bg-green-500 text-white px-4 py-2 rounded"
+                  >
+                    Right Back
+                  </button>
+                  <button
+                    onClick={() => movePiece('LF')}
+                    className="bg-green-500 text-white px-4 py-2 rounded"
+                  >
+                    Left Front
+                  </button>
+                  <button
+                    onClick={() => movePiece('LB')}
+                    className="bg-green-500 text-white px-4 py-2 rounded"
+                  >
+                    Left Back
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => movePiece('Front')}
+                    className="bg-green-500 text-white px-4 py-2 rounded"
+                  >
+                    Front
+                  </button>
+                  <button
+                    onClick={() => movePiece('Back')}
+                    className="bg-green-500 text-white px-4 py-2 rounded"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => movePiece('Left')}
+                    className="bg-green-500 text-white px-4 py-2 rounded"
+                  >
+                    Left
+                  </button>
+                  <button
+                    onClick={() => movePiece('Right')}
+                    className="bg-green-500 text-white px-4 py-2 rounded"
+                  >
+                    Right
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        <button
+          className="mt-4 bg-red-500 text-white px-4 py-2 rounded"
+          onClick={resetGame}
+        >
+          Reset Game
+        </button>
       </div>
     </div>
   );
 }
 
 export default GameBoard;
-
